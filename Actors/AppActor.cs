@@ -8,6 +8,7 @@ public class App: UntypedActor
 {
     public App()
     {
+        Context.ActorOf(Props.Create<LoggerActor>(), "Logger");
         Context.ActorOf(Props.Create<ApiServiceActor>(), "ApiService");
         Context.ActorOf(Props.Create<DataManagerActor>(), "DataManager");
         Context.ActorOf(Props.Create<HttpListenerActor>("http://localhost:8080/", 16), "HttpListener");
