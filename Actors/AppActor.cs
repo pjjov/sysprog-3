@@ -8,6 +8,7 @@ public class App: UntypedActor
 {
     public App()
     {
+        Context.ActorOf(Props.Create<HttpListenerActor>("http://localhost:8080/", 16), "listener");
     }
 
     protected override void OnReceive(object message)
