@@ -1,6 +1,5 @@
 using System.Net;
 using Akka.Actor;
-using Akka.Routing;
 
 namespace SysProg.Actors;
 public record Request(HttpListenerContext ctx);
@@ -12,11 +11,14 @@ public class HttpListenerActor: ReceiveActor
     private int activeRequests;
     private bool shutdown;
     private HttpListener http;
+    private IActorRef handler;
 
     public HttpListenerActor(string prefix, int poolSize)
     {
         if (!HttpListener.IsSupported)
             throw new Exception("HttpListener nije podrzan!");
+
+        handler = Context.ActorOf(Akka.Actor.Props.Create<HttpHandlerActor>(), "handler");
 
         http = new ();
         http.Prefixes.Add(prefix);
@@ -46,6 +48,7 @@ public class HttpListenerActor: ReceiveActor
         try
         {
             var ctx = await http.GetContextAsync();
+            handler.Tell(new Request(ctx));
             
             activeRequests++;
             Self.Tell(new ListenNext());
