@@ -1,5 +1,4 @@
-using System.Globalization;
-using Akka.Actor;
+namespace SysProg.Actors;
 
 public class FileLoggerActor : ReceiveActor
 {

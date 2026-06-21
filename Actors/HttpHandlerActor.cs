@@ -1,37 +1,25 @@
-using System.Net;
-using Akka.Actor;
-
 namespace SysProg.Actors;
-
-public record YearSpan(int From, int To);
 
 public class HttpHandlerActor: ReceiveActor
 {
+    public record Request(HttpListenerContext ctx);
+    public record Response(HttpListenerContext ctx);
     private IActorRef? dataManager;
-    public HttpHandlerActor(HttpListenerContext ctx)
+    public HttpHandlerActor(IActorRef dataManager)
     {
+        this.dataManager = dataManager;
         ReceiveAsync<HttpListenerContext>(Handle);
-        Self.Tell(ctx);
     }
 
     private async Task Handle(HttpListenerContext ctx)
     {
         var yearSpan = ParseQuery(ctx);
         
-        var dataManager = await GetDataManager();
-
         var result = await dataManager.Ask(yearSpan);
         var body =  result!.ToString() ?? "";
 
         Send(ctx, body);
         Context.Stop(Self);
-    }
-
-    private async Task<IActorRef> GetDataManager()
-    {
-        if (dataManager.IsNobody())
-            dataManager = await Context.ActorSelection("../DataManager").ResolveOne(new TimeSpan(0, 5, 0));
-        return dataManager!;
     }
 
     private YearSpan ParseQuery(HttpListenerContext ctx)
@@ -66,6 +54,6 @@ public class HttpHandlerActor: ReceiveActor
         output.Close();
     }
 
-    public static Props Props(HttpListenerContext ctx) =>
-        Akka.Actor.Props.Create(() => new HttpHandlerActor(ctx));
+    public static Props Props(IActorRef dataManager) =>
+        Akka.Actor.Props.Create(() => new HttpHandlerActor(dataManager));
 }

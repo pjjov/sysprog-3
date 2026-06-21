@@ -1,20 +1,23 @@
-using Akka.Actor;
-
 namespace SysProg.Actors;
-
-public sealed class Shutdown {};
 
 public class App: UntypedActor
 {
+    public sealed record Shutdown;
+
     public App()
     {
         var logger = Context.ActorOf(Props.Create<LoggerActor>(), "Logger");
-        logger.Tell(new AddConsoleLogger());
-        logger.Tell(new AddFileLogger("logs.txt"));
+        logger.Tell(new LoggerActor.AddConsole());
+        logger.Tell(new LoggerActor.AddFile("logs.txt"));
 
-        Context.ActorOf(Props.Create<ApiServiceActor>(), "ApiService");
-        Context.ActorOf(Props.Create<DataManagerActor>(), "DataManager");
-        Context.ActorOf(Props.Create<HttpListenerActor>("http://localhost:8080/", 16), "HttpListener");
+        var apiService = Context.ActorOf(Props.Create<ApiServiceActor>(), "ApiService");
+        var dataManager = Context.ActorOf(Props.Create<DataManagerActor>(), "DataManager");
+        var httpListener = Context.ActorOf(Props.Create<HttpListenerActor>("http://localhost:8080/", 16), "HttpListener");
+
+        dataManager.Tell(new InjectActor<ApiServiceActor>(apiService));
+        httpListener.Tell(new InjectActor<DataManagerActor>(dataManager));
+
+        httpListener.Tell(new HttpListenerActor.Start());
     }
 
     protected override void OnReceive(object message)
