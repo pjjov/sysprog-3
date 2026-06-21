@@ -6,32 +6,42 @@ namespace SysProg.Actors;
 public class DataManagerActor: ReceiveActor
 {
     private IActorRef prizeManager;
-    private IActorRef lauterateManager;
+    private IActorRef laureateManager;
+    private IActorRef? apiService;
     private List<YearSpan> loadedSpans;
 
     public DataManagerActor()
     {
         loadedSpans = new ();
-        prizeManager = Context.ActorOf(Akka.Actor.Props.Create<PrizeManagerActor>(), "prizes");
-        lauterateManager = Context.ActorOf(Akka.Actor.Props.Create<LauterateManagerActor>(), "lauterates");
+        prizeManager = Context.ActorOf(Akka.Actor.Props.Create<PrizeManagerActor>(), "PrizeManager");
+        laureateManager = Context.ActorOf(Akka.Actor.Props.Create<LaureateManagerActor>(), "LaureateManager");
 
         ReceiveAsync<YearSpan>(span => FindYearSpan(span));
     }
 
-    protected async Task FindYearSpan(YearSpan span)
+    private async Task FindYearSpan(YearSpan span)
     {
         YearSpan missingSpan;
 
         if (!HasYearSpan(span, out missingSpan))
-            await FetchYearSpan(missingSpan);
+            await FetchMissing(missingSpan);
     }
 
-    protected async Task FetchYearSpan(YearSpan span)
+    private async Task FetchMissing(YearSpan span)
     {
+        var apiService = await GetApiService();
+        await apiService.Ask(span);
         loadedSpans.Add(span);
     }
 
-    protected bool HasYearSpan(YearSpan span, out YearSpan result)
+    private async Task<IActorRef> GetApiService()
+    {
+        if (apiService.IsNobody())
+            apiService = await Context.ActorSelection("../ApiService").ResolveOne(new TimeSpan(0, 5, 0));
+        return apiService!;
+    }
+
+    private bool HasYearSpan(YearSpan span, out YearSpan result)
     {
         var existing = loadedSpans.FirstOrDefault(s =>
             span.From >= s.From &&

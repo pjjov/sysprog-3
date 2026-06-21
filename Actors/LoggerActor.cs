@@ -1,10 +1,16 @@
 
 using Akka.Actor;
 using SysProg.Actors;
+
+public record AddFileLogger(string filePath);
+public record AddConsoleLogger();
+
 public class LoggerActor : ReceiveActor
 {
     public LoggerActor()
     {
+        Receive<AddFileLogger>(filePath => Context.ActorOf(Props.Create<FileLoggerActor>(filePath)));
+        Receive<AddConsoleLogger>(filePath => Context.ActorOf(Props.Create<ConsoleLoggerActor>(filePath)));
         Receive<Response>(msg => HandleRequest(msg));
         Receive<Request>(msg => HandleRequest(msg));        
         Receive<Exception>(msg => HandleRequest(msg));
