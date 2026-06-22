@@ -6,6 +6,7 @@ public class HttpListenerActor: ReceiveActor
     private sealed record ListenNext;
     private bool shutdown;
     private HttpListener http;
+    private Logger logger = Logger.Nobody;
     private IActorRef dataManager = ActorRefs.Nobody;
 
     public HttpListenerActor(string prefix, int poolSize)
@@ -16,6 +17,7 @@ public class HttpListenerActor: ReceiveActor
         http = new ();
         http.Prefixes.Add(prefix);
 
+        Receive<Inject<Logger>>(dep => logger = dep.Item);
         Receive<InjectActor<DataManagerActor>>(dep => dataManager = dep.Reference);
         ReceiveAsync<ListenNext>(_ => Listen());
     
@@ -39,10 +41,13 @@ public class HttpListenerActor: ReceiveActor
             Context.ActorOf(Akka.Actor.Props.Create<HttpHandlerActor>(ctx));
             Self.Tell(new ListenNext());
         }
-        catch (HttpListenerException) when (shutdown)
+        catch (HttpListenerException e)
         {
-            Context.Stop(Self);
-        }    
+            if (shutdown)
+                Context.Stop(Self);
+            else
+                logger.Write(e);
+        }
     }
 
     public static Props Props(string prefix, int poolSize) =>

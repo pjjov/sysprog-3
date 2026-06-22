@@ -4,15 +4,16 @@ public class LoggerActor : ReceiveActor
 {
     public record AddConsole();
     public record AddFile(string filePath);
+    public record Write<T>(T item);
 
     public LoggerActor()
     {
         Receive<AddFile>(cmd => Context.ActorOf(Props.Create<FileLoggerActor>(cmd.filePath)));
         Receive<AddConsole>(cmd => Context.ActorOf(Props.Create<ConsoleLoggerActor>()));
-        Receive<HttpHandlerActor.Response>(msg => HandleRequest(msg));
-        Receive<HttpHandlerActor.Request>(msg => HandleRequest(msg));
-        Receive<Exception>(msg => HandleRequest(msg));
-        Receive<string>(msg => HandleRequest(msg));
+        Receive<Write<HttpHandlerActor.Response>>(write => HandleRequest(write.item));
+        Receive<Write<HttpHandlerActor.Request>>(write => HandleRequest(write.item));
+        Receive<Write<Exception>>(write => HandleRequest(write.item));
+        Receive<Write<string>>(write => HandleRequest(write.item));
     }
 
     private void Broadcast(string message)
