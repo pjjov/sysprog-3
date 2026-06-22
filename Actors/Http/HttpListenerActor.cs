@@ -37,8 +37,11 @@ public class HttpListenerActor: ReceiveActor
     {
         try
         {
+            var handler = Context.ActorOf(Akka.Actor.Props.Create<HttpHandlerActor>(logger, dataManager));
+            
             var ctx = await http.GetContextAsync();
-            Context.ActorOf(Akka.Actor.Props.Create<HttpHandlerActor>(ctx));
+            handler.Tell(ctx);
+
             Self.Tell(new ListenNext());
         }
         catch (HttpListenerException e)

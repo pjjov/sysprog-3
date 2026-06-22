@@ -2,17 +2,24 @@ using System.Text.Json.Nodes;
 
 namespace SysProg.Util;
 
-public record Prize(int year, PrizeCategory category, int prizeAmountAdjusted)
+public record Prize(int id, int year, PrizeCategory category, int prizeAmountAdjusted)
 {
     public static Prize Parse(JsonNode data)
     {
-        var category = data["category"]?["en"]?.GetValue<string>();
-        var awardYear = data["awardYear"]?.GetValue<string>();
+        var categoryName = data["category"]?["en"]?.GetValue<string>();
+        var awardYear = data["awardYear"]?.GetValue<int>() ?? 0;
         var prizeAmountAdjusted = data["prizeAmountAdjusted"]?.GetValue<int>();
 
+        PrizeCategory category;
+        if (!Enum.TryParse(categoryName, out category))
+            category = PrizeCategory.Unknown;
+
+        var id = 10 * awardYear + (int)category;
+
         return new Prize(
-            int.Parse(awardYear ?? "0"),
-            Enum.Parse<PrizeCategory>(category ?? "Unknown"),
+            id,
+            awardYear,
+            category,
             prizeAmountAdjusted ?? 0
         );
     }

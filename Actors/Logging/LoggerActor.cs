@@ -26,21 +26,21 @@ public class LoggerActor : ReceiveActor
 
     private void HandleRequest(HttpHandlerActor.Response res)
     {
-        Broadcast($"[RESPONSE] {res.ctx.Request.QueryString} {res.ctx.Request.HttpMethod} {res.ctx.Response.StatusCode}");
+        Broadcast($"[RESPONSE] {res.ctx.Request.HttpMethod} {res.ctx.Request.RawUrl} {res.ctx.Response.StatusCode}");
     }
 
     private void HandleRequest(HttpHandlerActor.Request req)
-    {
-        Broadcast($"[REQUEST] {req.ctx.Request.QueryString} {req.ctx.Request.HttpMethod}");
+    {   
+        Broadcast($"[REQUEST]  {req.ctx.Request.HttpMethod} {req.ctx.Request.RawUrl}");
     }
 
     private void HandleRequest(Exception ex)
     {
-        Broadcast($"[ERROR] {ex.Message}");
+        Broadcast($"[ERROR]    {ex.Message}");
     }
 
     private void HandleRequest(string str)
     {
-        Broadcast($"[MESSAGE] {str}");
+        Broadcast($"[MESSAGE]  {str}");
     }
 }

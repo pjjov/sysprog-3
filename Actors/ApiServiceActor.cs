@@ -2,34 +2,36 @@ using System.Text.Json.Nodes;
 using Akka.Actor;
 using System.Reactive.Linq;
 using SysProg.Util;
+using System.Reactive.Subjects;
 
 namespace SysProg.Actors;
 
 public class ApiServiceActor: ReceiveActor
 {
-    private const string baseUrl = "https://api.nobelprize.org/2.1";
     private HttpClient client;
     private IActorRef laureateManager = ActorRefs.Nobody;
     private IActorRef prizeManager = ActorRefs.Nobody;
+    private Logger logger = Logger.Nobody;
+    private Subject<JsonNode> dataStream;
 
     public ApiServiceActor()
     {
-        client = new ();
-        client.BaseAddress = new Uri(baseUrl);
-        
+        dataStream = new ();
+        InitStreams();
+
+        client = new();
+
         ReceiveAsync<YearSpan>(Query);
+        Receive<Inject<Logger>>(dep => logger = dep.Item);
         Receive<InjectActor<LaureateManagerActor>>(dep => laureateManager = dep.Reference);
         Receive<InjectActor<PrizeManagerActor>>(dep => prizeManager = dep.Reference);
     }
 
-    private async Task Query(YearSpan span)
+    private void InitStreams()
     {
-        var data = await Fetch(YearSpanToUrl(span));
-
-        var baseStream = Observable.Return(data)
-            .SelectMany(data => (JsonArray)data["nobelPrizes"]!);
+        var baseStream = dataStream.SelectMany(data => (JsonArray)data["nobelPrizes"]!);
             
-        var prizeStream = baseStream.Select(prize => Prize.Parse(data));
+        var prizeStream = baseStream.Select(prize => Prize.Parse(prize!));
 
         var laureateStream = baseStream.SelectMany(
             prize => (JsonArray)prize!["laureates"]!,
@@ -38,6 +40,37 @@ public class ApiServiceActor: ReceiveActor
         
         prizeStream.Subscribe(prize => prizeManager.Tell(prize));
         laureateStream.Subscribe(laureate => laureateManager.Tell(laureate));
+    }
+
+    private async Task Query(YearSpan span)
+    {
+        
+        try
+        {
+            var url = YearSpanToUrl(span);
+            logger.Write($"Fetching {url}");
+            
+            var data = await Fetch(url);
+            dataStream.OnNext(data);
+            Sender.Tell(true);
+        }
+        catch (Exception e)
+        {
+            logger.Write(e);
+            Sender.Tell(false);
+        }
+    }
+
+    protected override void PostStop()
+    {
+        dataStream.OnCompleted();
+        dataStream.Dispose();
+        base.PostStop();
+    }
+
+    public void Dispose()
+    {
+        dataStream.Dispose();
     }
 
     private async Task<JsonNode> Fetch(string url)
@@ -50,6 +83,6 @@ public class ApiServiceActor: ReceiveActor
 
     private string YearSpanToUrl(YearSpan span)
     {
-        return $"/nobelPrizes?nobelPrizeYear={span.From}&yearTo={span.To}";
+        return $"https://api.nobelprize.org/2.1/nobelPrizes?nobelPrizeYear={span.From}&yearTo={span.To}";
     }
 }

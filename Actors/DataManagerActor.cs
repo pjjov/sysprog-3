@@ -5,6 +5,7 @@ public class DataManagerActor: ReceiveActor
     private IActorRef prizeManager;
     private IActorRef laureateManager;
     private IActorRef apiService = ActorRefs.Nobody;
+    private Logger logger = Logger.Nobody;
     private List<YearSpan> loadedSpans;
 
     public DataManagerActor()
@@ -14,6 +15,8 @@ public class DataManagerActor: ReceiveActor
         laureateManager = Context.ActorOf(Akka.Actor.Props.Create<LaureateManagerActor>(), "LaureateManager");
 
         ReceiveAsync<YearSpan>(span => FindYearSpan(span));
+        
+        Receive<Inject<Logger>>(dep => logger = dep.Item);
         Receive<InjectActor<ApiServiceActor>>(dep => {
             apiService = dep.Reference;
             apiService.Tell(new InjectActor<PrizeManagerActor>(prizeManager));
@@ -27,41 +30,29 @@ public class DataManagerActor: ReceiveActor
 
         if (!HasYearSpan(span, out missingSpan))
             await FetchMissing(missingSpan);
+
+        Sender.Tell("TODO");
     }
 
     private async Task FetchMissing(YearSpan span)
     {
+        logger.Write($"Fetching missing year span {span.From}-{span.To}");
+        
         await apiService.Ask(span);
         loadedSpans.Add(span);
     }
 
     private bool HasYearSpan(YearSpan span, out YearSpan result)
     {
-        var existing = loadedSpans.FirstOrDefault(s =>
-            span.From >= s.From &&
-            span.To <= s.To);
+        var existing = span.FindOverlap(loadedSpans);
 
-        if (existing is not null)
+        if (existing != null)
         {
             result = existing;
             return true;
         }
 
-        var overlaps = loadedSpans
-            .Where(s => s.From <= span.To &&
-                        s.To >= span.From)
-            .ToList();
-
-        if (overlaps.Count == 0)
-        {
-            result = span;
-            return false;
-        }
-
-        result = new YearSpan(
-            Math.Min(span.From, overlaps.Min(s => s.From)),
-            Math.Max(span.To, overlaps.Max(s => s.To))
-        );
+        result = span.Difference(loadedSpans);
         return false;
     }
 }
