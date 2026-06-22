@@ -1,4 +1,4 @@
-namespace SysProg.Actors;
+namespace SysProg.Actors.Logging;
 
 public class LoggerActor : ReceiveActor
 {
@@ -7,8 +7,8 @@ public class LoggerActor : ReceiveActor
 
     public LoggerActor()
     {
-        Receive<AddFile>(filePath => Context.ActorOf(Props.Create<FileLoggerActor>(filePath)));
-        Receive<AddConsole>(filePath => Context.ActorOf(Props.Create<ConsoleLoggerActor>(filePath)));
+        Receive<AddFile>(cmd => Context.ActorOf(Props.Create<FileLoggerActor>(cmd.filePath)));
+        Receive<AddConsole>(cmd => Context.ActorOf(Props.Create<ConsoleLoggerActor>()));
         Receive<HttpHandlerActor.Response>(msg => HandleRequest(msg));
         Receive<HttpHandlerActor.Request>(msg => HandleRequest(msg));
         Receive<Exception>(msg => HandleRequest(msg));

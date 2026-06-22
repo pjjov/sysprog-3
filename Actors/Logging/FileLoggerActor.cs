@@ -1,8 +1,9 @@
-namespace SysProg.Actors;
+namespace SysProg.Actors.Logging;
 
 public class FileLoggerActor : ReceiveActor
 {
     private readonly StreamWriter _writer;
+
     public FileLoggerActor(string filePath)
     {
         _writer = new StreamWriter(

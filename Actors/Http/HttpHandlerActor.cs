@@ -1,4 +1,4 @@
-namespace SysProg.Actors;
+namespace SysProg.Actors.Http;
 
 public class HttpHandlerActor: ReceiveActor
 {

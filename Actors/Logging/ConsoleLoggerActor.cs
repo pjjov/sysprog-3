@@ -1,4 +1,4 @@
-namespace SysProg.Actors;
+namespace SysProg.Actors.Logging;
 
 public class ConsoleLoggerActor : ReceiveActor
 {

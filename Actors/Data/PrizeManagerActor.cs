@@ -1,4 +1,4 @@
-namespace SysProg.Actors;
+namespace SysProg.Actors.Data;
 
 public class PrizeManagerActor: ReceiveActor
 {
