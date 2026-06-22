@@ -6,9 +6,9 @@ public record Laureate(int Id, string Fullname, PrizeCategory Category, int Priz
 {
     public static Laureate Parse(JsonNode parent, JsonNode data)
     {
-        var id = data["id"]?.GetValue<int>();
+        var id = int.Parse(data["id"]?.GetValue<string>() ?? "-1");
         var categoryName = parent["category"]?["en"]?.GetValue<string>();
-        var awardYear = parent["awardYear"]?.GetValue<int>() ?? 0;
+        var awardYear = int.Parse(parent["awardYear"]?.GetValue<string>() ?? "0");
         var fullName = data["fullName"]?.GetValue<string>();
 
         PrizeCategory category;
@@ -16,7 +16,7 @@ public record Laureate(int Id, string Fullname, PrizeCategory Category, int Priz
             category = PrizeCategory.Unknown;
 
         return new Laureate(
-            id ?? -1,
+            id,
             fullName ?? "Unknown",
             category,
             awardYear
