@@ -36,11 +36,11 @@ public class LoggerActor : ReceiveActor
 
     private void HandleRequest(Exception ex)
     {
-        Broadcast($"[ERROR]    {ex.Message}");
+        Broadcast($"[ERROR]    {ex.Message} \n{ex.StackTrace}");
     }
 
     private void HandleRequest(string str)
     {
-        Broadcast($"[MESSAGE]  {str}");
+        Broadcast($"[MESSAGE]  {Sender.Path.Name,-20}{str}");
     }
 }

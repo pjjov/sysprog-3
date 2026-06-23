@@ -1,15 +1,14 @@
-public class DataActor<T> : UntypedActor
+namespace SysProg.Actors.Data;
+
+public class DataActor<T> : ReceiveActor
 {
+    public record Get;
     private T Item;
 
     public DataActor(T item)
     {
         Item = item;
-    }
-
-    protected override void OnReceive(object message)
-    {
-        Sender.Tell(Item);
+        Receive<Get>(_ => Sender.Tell(Item));
     }
 
     public static Props Props(T Item) =>

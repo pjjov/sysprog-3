@@ -2,6 +2,8 @@ namespace SysProg.Actors;
 
 public class DataManagerActor: ReceiveActor
 {
+    public record Result(float AveragePriceAmountAdjusted, List<Laureate> Laureates);
+
     private IActorRef prizeManager;
     private IActorRef laureateManager;
     private IActorRef apiService = ActorRefs.Nobody;
@@ -31,7 +33,14 @@ public class DataManagerActor: ReceiveActor
         if (!HasYearSpan(span, out missingSpan))
             await FetchMissing(missingSpan);
 
-        Sender.Tell("TODO");
+        logger.Write($"Calculating average prize amount for years {span.From}-{span.To}.");
+        var prizeAmountAdjusted = await prizeManager.Ask<float>(span);
+
+        logger.Write($"Collection laureates for years {span.From}-{span.To}.");
+        var laureates = await laureateManager.Ask<List<Laureate>>(span);
+
+        logger.Write($"Replying to sender with collected data!");
+        Sender.Tell(new Result(prizeAmountAdjusted, laureates));
     }
 
     private async Task FetchMissing(YearSpan span)

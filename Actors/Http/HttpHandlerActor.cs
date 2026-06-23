@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace SysProg.Actors.Http;
 
 public class HttpHandlerActor: ReceiveActor
@@ -16,31 +18,57 @@ public class HttpHandlerActor: ReceiveActor
     private async Task Handle(HttpListenerContext ctx)
     {
         logger.Write(new Request(ctx));
-        string body = await Query(ctx);
+    
+        if (ParseRequest(ctx, out var yearSpan))
+            await Query(ctx, yearSpan);
+
         logger.Write(new Response(ctx));
         
-        Send(ctx, body);
         Context.Stop(Self);
     }
 
-    private async Task<string>Query(HttpListenerContext ctx)
+    private async Task Query(HttpListenerContext ctx, YearSpan yearSpan)
     {
+        var res = ctx.Response;
+
         try
         {
-            var yearSpan = YearSpan.ParseQuery(ctx);
-            var result = await dataManager.Ask(yearSpan);
-            return result!.ToString() ?? "";
+            var result = await dataManager.Ask<DataManagerActor.Result>(yearSpan);
+            var body = JsonSerializer.Serialize(result);
+
+            res.AddHeader("Content-Type", "application/json");
+            Send(ctx, body);
         }
         catch (Exception e)
         {
             logger.Write(e);
-            ctx.Response.StatusCode = 400;
-            return e.Message;
+            Send(ctx, e.Message, 500);
         }
     }
 
-    private void Send(HttpListenerContext context, string body) {
+    private bool ParseRequest(HttpListenerContext ctx, out YearSpan span)
+    {
+        var req = ctx.Request;
+
+        try
+        {
+            if (req.Url == null || req.Url.LocalPath != "/")
+                throw new Exception($"Only '/' path is allowed; got {req.Url?.LocalPath}!");
+
+            span = YearSpan.ParseQuery(req.QueryString);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Send(ctx, e.Message, 400);
+            span = new YearSpan(0, 0);
+            return false;
+        }
+    }
+
+    private void Send(HttpListenerContext context, string body, int code = 200) {
         HttpListenerResponse response = context.Response;
+        response.StatusCode = code;
 
         byte[] buffer = System.Text.Encoding.UTF8.GetBytes(body);
         response.ContentLength64 = buffer.Length;

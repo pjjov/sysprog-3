@@ -6,31 +6,36 @@ public class LaureateManagerActor: ReceiveActor
     {
         Receive<Laureate>(laureate =>
         {
-            var str = $"{laureate.PrizeYear}-{laureate.Id}";
-            Context.ActorOf(Props.Create(() => new DataActor<Laureate>(laureate)), str);
+            var name = $"{laureate.PrizeYear}-{laureate.Id}";
+            Context.ActorOf(Props.Create(() => new DataActor<Laureate>(laureate)), name);
         });
 
-        ReceiveAsync<YearSpan>(async yp =>
+        ReceiveAsync<YearSpan>(async span =>
         {
             var replyTo = Sender;
-            // moze bolje vrv ?
-            var tasks = Context.GetChildren()
-                .Where(child =>
-                {
-                    var parts = child.Path.Name.Split('-');
-                    return parts.Length >= 2
-                        && int.TryParse(parts[0], out var year)
-                        && year >= yp.From
-                        && year <= yp.To;
-                })
+
+            var tasks = GetChildren(span)
                 .Select(child => child.Ask<Laureate>(
-                    null,
-                    TimeSpan.FromSeconds(5)))
+                    new DataActor<Laureate>.Get(),
+                    TimeSpan.FromMilliseconds(100)
+                ))
                 .ToArray();
 
             var results = await Task.WhenAll(tasks);
 
-            replyTo.Tell(results);
+            replyTo.Tell(results.ToList());
         });
     }
+
+    private IEnumerable<IActorRef> GetChildren(YearSpan span)
+    {
+        return Context.GetChildren().Where(child =>
+        {
+            var parts = child.Path.Name.Split('-');
+            return parts.Length >= 2
+                && int.TryParse(parts[0], out var year)
+                && year >= span.From
+                && year <= span.To;
+        });
+    } 
 }

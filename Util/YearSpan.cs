@@ -1,3 +1,5 @@
+using System.Collections.Specialized;
+
 namespace SysProg.Util;
 
 public record YearSpan(int From, int To)
@@ -27,10 +29,8 @@ public record YearSpan(int From, int To)
         );
     }
 
-    public static YearSpan ParseQuery(HttpListenerContext ctx)
+    public static YearSpan ParseQuery(NameValueCollection query)
     {
-        var query = ctx.Request.QueryString;
-
         var fromParam = query["from"];
         var toParam = query["to"];
 

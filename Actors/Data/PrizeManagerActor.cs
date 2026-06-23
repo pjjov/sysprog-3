@@ -1,38 +1,55 @@
-using System.Security.Cryptography.X509Certificates;
-
 namespace SysProg.Actors.Data;
 
 public class PrizeManagerActor: ReceiveActor
 {
+    Dictionary<int, (int Sum, int Count)> yearlyAverages;
+
     public PrizeManagerActor()
     {
+        yearlyAverages = new ();
+
         Receive<Prize>(prize =>
         {
-            var str = $"{prize.year}-{prize.id}";
-            Context.ActorOf(Props.Create(() => new DataActor<Prize>(prize)), str);
+            AddAverage(prize.year, prize.prizeAmountAdjusted);
+
+            var name = $"{prize.year}-{prize.id}";
+            Context.ActorOf(Props.Create(() => new DataActor<Prize>(prize)), name);
         });
 
-        ReceiveAsync<YearSpan>(async yp =>
+        Receive<YearSpan>(span =>
         {
-            var replyTo = Sender;
-            // moze bolje vrv ?
-            var tasks = Context.GetChildren()
-                .Where(child =>
-                {
-                    var parts = child.Path.Name.Split('-');
-                    return parts.Length >= 2
-                        && int.TryParse(parts[0], out var year)
-                        && year >= yp.From
-                        && year <= yp.To;
-                })
-                .Select(child => child.Ask<Prize>(
-                    null,
-                    TimeSpan.FromSeconds(5)))
-                .ToArray();
-
-            var results = await Task.WhenAll(tasks);
-
-            replyTo.Tell(results);
+            var average = SpanAverage(span);
+            Sender.Tell(average);
         });
+    }
+
+    private float SpanAverage(YearSpan span)
+    {
+        int sum = 0;
+        int count = 0;
+
+        for (int year = span.From; year <= span.To; year++)
+        {
+            if (yearlyAverages.TryGetValue(year, out var average))
+            {
+                sum += average.Sum;
+                count += average.Count;
+            }
+        }
+
+        return count > 0 ? sum / count : 0;
+    }
+
+    private void AddAverage(int year, int prizeAmountAdjusted)
+    {
+        if (yearlyAverages.TryGetValue(year, out var average))
+        {
+            average.Sum += prizeAmountAdjusted;
+            average.Count++;
+        }
+        else
+        {
+            yearlyAverages[year] = (prizeAmountAdjusted, 1);
+        }
     }
 }
