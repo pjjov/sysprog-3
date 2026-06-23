@@ -5,6 +5,7 @@ public class LoggerActor : ReceiveActor
     public record AddConsole();
     public record AddFile(string filePath);
     public record Write<T>(T item);
+    public record Message(string Category, ActorPath Path, string Content);
 
     public LoggerActor()
     {
@@ -16,31 +17,31 @@ public class LoggerActor : ReceiveActor
         Receive<Write<string>>(write => HandleRequest(write.item));
     }
 
-    private void Broadcast(string message)
+    private void Broadcast(string category, string content)
     {
         foreach (IActorRef child in Context.GetChildren())
         {
-            child.Tell(message, Self);
+            child.Tell(new Message(category, Sender.Path, content), Self);
         }
     }
 
     private void HandleRequest(HttpHandlerActor.Response res)
     {
-        Broadcast($"[RESPONSE] {res.ctx.Request.HttpMethod} {res.ctx.Request.RawUrl} {res.ctx.Response.StatusCode}");
+        Broadcast("RESPONSE", $"{res.ctx.Request.HttpMethod} {res.ctx.Request.RawUrl} {res.ctx.Response.StatusCode}");
     }
 
     private void HandleRequest(HttpHandlerActor.Request req)
     {   
-        Broadcast($"[REQUEST]  {req.ctx.Request.HttpMethod} {req.ctx.Request.RawUrl}");
+        Broadcast("REQUEST", $"{req.ctx.Request.HttpMethod} {req.ctx.Request.RawUrl}");
     }
 
     private void HandleRequest(Exception ex)
     {
-        Broadcast($"[ERROR]    {ex.Message} \n{ex.StackTrace}");
+        Broadcast("ERROR", $"{ex.Message} \n{ex.StackTrace}");
     }
 
     private void HandleRequest(string str)
     {
-        Broadcast($"[MESSAGE]  {Sender.Path.Name,-20}{str}");
+        Broadcast("MESSAGE", str);
     }
 }

@@ -14,9 +14,11 @@ public class FileLoggerActor : ReceiveActor
             AutoFlush = false
         };
 
-        Receive<string>(message =>
+        Receive<LoggerActor.Message>(message =>
         {
-            _writer.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}");
+            var time = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+            var line = $"{time} {message.Category,-10} {message.Path.ToStringWithoutAddress(),-30} {message.Content}";
+            _writer.WriteLine(line);
         });
     }
 

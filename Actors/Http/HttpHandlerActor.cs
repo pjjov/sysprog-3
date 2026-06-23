@@ -23,7 +23,6 @@ public class HttpHandlerActor: ReceiveActor
             await Query(ctx, yearSpan);
 
         logger.Write(new Response(ctx));
-        
         Context.Stop(Self);
     }
 
@@ -76,6 +75,7 @@ public class HttpHandlerActor: ReceiveActor
         System.IO.Stream output = response.OutputStream;
         output.Write(buffer, 0, buffer.Length);
         output.Close();
+        response.Close();
     }
 
     public static Props Props(Logger logger, IActorRef dataManager) =>
