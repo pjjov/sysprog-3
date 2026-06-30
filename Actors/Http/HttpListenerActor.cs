@@ -1,27 +1,29 @@
 namespace SysProg.Actors.Http;
 
-public class HttpListenerActor: ReceiveActor
+public class HttpListenerActor : ReceiveActor
 {
     public record Start;
     private sealed record ListenNext;
+
     private bool shutdown;
     private HttpListener http;
-    private Logger logger = Logger.Nobody;
-    private IActorRef dataManager = ActorRefs.Nobody;
+    private Logger logger;
+    private IActorRef dataManager;
 
-    public HttpListenerActor(string prefix, int poolSize)
+    public HttpListenerActor(Logger logger, IActorRef dataManager, string prefix)
     {
         if (!HttpListener.IsSupported)
             throw new Exception("HttpListener nije podrzan!");
 
-        http = new ();
+        http = new();
         http.Prefixes.Add(prefix);
+        this.logger = logger;
+        this.dataManager = dataManager;
 
-        Receive<Inject<Logger>>(dep => logger = dep.Item);
-        Receive<InjectActor<DataManagerActor>>(dep => dataManager = dep.Reference);
         ReceiveAsync<ListenNext>(_ => Listen());
-    
-        ReceiveAsync<Start>(async (_) => {
+
+        ReceiveAsync<Start>(async (_) =>
+        {
             http.Start();
             await Listen();
         });
@@ -38,7 +40,7 @@ public class HttpListenerActor: ReceiveActor
         try
         {
             var handler = Context.ActorOf(Akka.Actor.Props.Create<HttpHandlerActor>(logger, dataManager));
-            
+
             var ctx = await http.GetContextAsync();
             handler.Tell(ctx);
 
@@ -53,6 +55,6 @@ public class HttpListenerActor: ReceiveActor
         }
     }
 
-    public static Props Props(string prefix, int poolSize) =>
-        Akka.Actor.Props.Create(() => new HttpListenerActor(prefix, poolSize));
+    public static Props Props(Logger logger, IActorRef dataManager, string prefix) =>
+        Akka.Actor.Props.Create(() => new HttpListenerActor(logger, dataManager, prefix));
 }

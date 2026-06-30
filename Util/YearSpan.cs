@@ -4,31 +4,6 @@ namespace SysProg.Util;
 
 public record YearSpan(int From, int To)
 {
-    public YearSpan? FindOverlap(List<YearSpan> spans)
-    {
-        var existing = spans.FirstOrDefault(s =>
-            From >= s.From &&
-            To <= s.To
-        );
-
-        return existing;
-    }
-
-    public YearSpan Difference(List<YearSpan> spans)
-    {
-        var overlaps = spans
-            .Where(s => s.From <= To && s.To >= From)
-            .ToList();
-
-        if (overlaps.Count == 0)
-            return this;
-
-        return new YearSpan(
-            Math.Min(From, overlaps.Min(s => s.From)),
-            Math.Max(To, overlaps.Max(s => s.To))
-        );
-    }
-
     public static YearSpan ParseQuery(NameValueCollection query)
     {
         var fromParam = query["from"];

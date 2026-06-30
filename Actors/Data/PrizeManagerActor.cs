@@ -1,19 +1,22 @@
 namespace SysProg.Actors.Data;
 
-public class PrizeManagerActor: ReceiveActor
+public class PrizeManagerActor : ReceiveActor
 {
     Dictionary<int, (int Sum, int Count)> yearlyAverages;
 
     public PrizeManagerActor()
     {
-        yearlyAverages = new ();
+        yearlyAverages = new();
 
         Receive<Prize>(prize =>
         {
-            AddAverage(prize.year, prize.prizeAmountAdjusted);
-
             var name = $"{prize.year}-{prize.id}";
-            Context.ActorOf(Props.Create(() => new DataActor<Prize>(prize)), name);
+
+            if (Context.Child(name).IsNobody())
+            {
+                AddAverage(prize.year, prize.prizeAmountAdjusted);
+                Context.ActorOf(Props.Create(() => new DataActor<Prize>(prize)), name);
+            }
         });
 
         Receive<YearSpan>(span =>

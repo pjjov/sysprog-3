@@ -1,26 +1,22 @@
 namespace SysProg.Actors;
 
-public class App: UntypedActor
+public class App : UntypedActor
 {
     public sealed record Shutdown;
 
     public App()
     {
         var loggerActor = Context.ActorOf(Props.Create<LoggerActor>(), "Logger");
+        var logger = new Logger(loggerActor);
         loggerActor.Tell(new LoggerActor.AddConsole());
         loggerActor.Tell(new LoggerActor.AddFile("logs.txt"));
 
-        var apiService = Context.ActorOf(Props.Create<ApiServiceActor>(), "ApiService");
-        var dataManager = Context.ActorOf(Props.Create<DataManagerActor>(), "DataManager");
-        var httpListener = Context.ActorOf(Props.Create<HttpListenerActor>("http://localhost:8080/", 16), "HttpListener");
+        var dataManager = Context.ActorOf(Props.Create<DataManagerActor>(logger), "DataManager");
+        var httpListener = Context.ActorOf(Props.Create<HttpListenerActor>(logger, dataManager, "http://localhost:8080/"), "HttpListener");
 
-        var logger = new Logger(loggerActor);
-        dataManager.Tell(new Inject<Logger>(logger));
-        apiService.Tell(new Inject<Logger>(logger));
-        httpListener.Tell(new Inject<Logger>(logger));
-
-        dataManager.Tell(new InjectActor<ApiServiceActor>(apiService));
-        httpListener.Tell(new InjectActor<DataManagerActor>(dataManager));
+        var apiService = new ApiService(logger);
+        apiService.PrizeStream.Subscribe(prize => dataManager.Tell(prize));
+        apiService.LaureateStream.Subscribe(laureate => dataManager.Tell(laureate));
 
         httpListener.Tell(new HttpListenerActor.Start());
     }

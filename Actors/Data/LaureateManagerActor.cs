@@ -1,13 +1,15 @@
 namespace SysProg.Actors.Data;
 
-public class LaureateManagerActor: ReceiveActor
+public class LaureateManagerActor : ReceiveActor
 {
     public LaureateManagerActor()
     {
         Receive<Laureate>(laureate =>
         {
             var name = $"{laureate.PrizeYear}-{laureate.Id}";
-            Context.ActorOf(Props.Create(() => new DataActor<Laureate>(laureate)), name);
+
+            if (Context.Child(name).IsNobody())
+                Context.ActorOf(Props.Create(() => new DataActor<Laureate>(laureate)), name);
         });
 
         ReceiveAsync<YearSpan>(async span =>
@@ -37,5 +39,5 @@ public class LaureateManagerActor: ReceiveActor
                 && year >= span.From
                 && year <= span.To;
         });
-    } 
+    }
 }
