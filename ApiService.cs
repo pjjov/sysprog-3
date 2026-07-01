@@ -1,3 +1,4 @@
+namespace SysProg;
 
 using System.Reactive.Linq;
 using System.Text.Json.Nodes;
@@ -7,7 +8,7 @@ public class ApiService
     private HttpClient _client;
     private Logger _logger;
 
-    private const string url = "https://api.nobelprize.org/2.1/nobelPrizes";
+    private const string url = "https://api.nobelprize.org/2.1/nobelPrizes?limit=1000";
 
     public IObservable<Prize> PrizeStream;
     public IObservable<Laureate> LaureateStream;
@@ -19,16 +20,20 @@ public class ApiService
 
         var dataStream = Observable
             .Timer(TimeSpan.Zero, TimeSpan.FromMinutes(5))
-            .SelectMany(async _ => await Query())
-            .Where(data => data != null);
+            .SelectMany(_ => Observable.FromAsync(Query))
+            .WhereNotNull();
 
-        var baseStream = dataStream.SelectMany(data => (JsonArray)data!["nobelPrizes"]!);
+        var baseStream = dataStream
+            .SelectManyJsonArray(data => data["nobelPrizes"])
+            .Publish()
+            .RefCount();
 
-        var prizeStream = baseStream.Select(prize => Prize.Parse(prize!));
+        var prizeStream = baseStream
+            .Select(prize => Prize.Parse(prize!));
 
-        var laureateStream = baseStream.SelectMany(
-            prize => (JsonArray)prize!["laureates"]!,
-            (prize, laureate) => Laureate.Parse(prize!, laureate!)
+        var laureateStream = baseStream.SelectManyJsonArray(
+            prize => prize["laureates"],
+            (prize, laureate) => Laureate.Parse(prize, laureate)
         );
 
         PrizeStream = prizeStream;

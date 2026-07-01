@@ -31,13 +31,11 @@ public class LaureateManagerActor : ReceiveActor
 
     private IEnumerable<IActorRef> GetChildren(YearSpan span)
     {
-        return Context.GetChildren().Where(child =>
-        {
-            var parts = child.Path.Name.Split('-');
-            return parts.Length >= 2
-                && int.TryParse(parts[0], out var year)
-                && year >= span.From
-                && year <= span.To;
-        });
+        var years = Enumerable
+            .Range(span.From, span.To - span.From + 1)
+            .Select(year => year.ToString());
+
+        return Context.GetChildren()
+            .Where(child => years.Any(year => child.Path.Name.StartsWith(year)));
     }
 }

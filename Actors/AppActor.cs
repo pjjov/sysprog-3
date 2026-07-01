@@ -15,8 +15,15 @@ public class App : UntypedActor
         var httpListener = Context.ActorOf(Props.Create<HttpListenerActor>(logger, dataManager, "http://localhost:8080/"), "HttpListener");
 
         var apiService = new ApiService(logger);
-        apiService.PrizeStream.Subscribe(prize => dataManager.Tell(prize));
-        apiService.LaureateStream.Subscribe(laureate => dataManager.Tell(laureate));
+        apiService.PrizeStream.Subscribe(
+            prize => dataManager.Tell(prize),
+            e => logger.Write(e)
+        );
+
+        apiService.LaureateStream.Subscribe(
+            laureate => dataManager.Tell(laureate),
+            e => logger.Write(e)
+        );
 
         httpListener.Tell(new HttpListenerActor.Start());
     }
