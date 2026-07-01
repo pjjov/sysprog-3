@@ -8,18 +8,23 @@ public class ApiService
     private HttpClient _client;
     private Logger _logger;
 
-    private const string url = "https://api.nobelprize.org/2.1/nobelPrizes?limit=1000";
+    private int _limit;
+    private int _offset = 0;
+    private int _count = 1000;
+
+    private const string baseUrl = "https://api.nobelprize.org/2.1/nobelPrizes";
 
     public IObservable<Prize> PrizeStream;
     public IObservable<Laureate> LaureateStream;
 
-    public ApiService(Logger logger)
+    public ApiService(Logger logger, int limit = 25)
     {
         _client = new();
         _logger = logger;
+        _limit = limit;
 
         var dataStream = Observable
-            .Timer(TimeSpan.Zero, TimeSpan.FromMinutes(5))
+            .Timer(TimeSpan.Zero, TimeSpan.FromSeconds(5))
             .SelectMany(_ => Observable.FromAsync(Query))
             .WhereNotNull();
 
@@ -42,10 +47,16 @@ public class ApiService
 
     private async Task<JsonNode?> Query()
     {
+        if (_offset >= _count)
+            return null;
+
         try
         {
-            _logger.Write($"Fetching data from API.");
-            return await Fetch(url);
+            _logger.Write($"Fetching data from API. ({_offset}-{_offset + _limit})");
+            var result = await Fetch(MakeUrl());
+
+            _offset += _limit;
+            return result;
         }
         catch (Exception e)
         {
@@ -63,5 +74,10 @@ public class ApiService
 
         _logger.Write($"Parsing data from API.");
         return JsonNode.Parse(responseBody)!;
+    }
+
+    private string MakeUrl()
+    {
+        return $"{baseUrl}?limit={_limit}&offset={_offset}";
     }
 }
